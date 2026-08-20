@@ -27,12 +27,22 @@ export class RateController {
         declaredValue,
       } = req.body;
 
+      // Validate required pincode fields
+      if (!pickupPincode || !dropPincode) {
+        throw new AppError('Both pickupPincode and dropPincode are required', 400);
+      }
+
+      // Validate required dimension and weight fields
+      if (lengthCm === undefined || widthCm === undefined || heightCm === undefined || actualWeightKg === undefined) {
+        throw new AppError('lengthCm, widthCm, heightCm, and actualWeightKg are required', 400);
+      }
+
       const quote = await RateEngineService.calculateRate({
-        pickupPincode: pickupPincode ? String(pickupPincode) : undefined,
+        pickupPincode: String(pickupPincode),
         pickupArea: pickupArea ? String(pickupArea) : undefined,
         pickupLat: pickupLat !== undefined ? parseFloat(String(pickupLat)) : undefined,
         pickupLng: pickupLng !== undefined ? parseFloat(String(pickupLng)) : undefined,
-        dropPincode: dropPincode ? String(dropPincode) : undefined,
+        dropPincode: String(dropPincode),
         dropArea: dropArea ? String(dropArea) : undefined,
         dropLat: dropLat !== undefined ? parseFloat(String(dropLat)) : undefined,
         dropLng: dropLng !== undefined ? parseFloat(String(dropLng)) : undefined,
@@ -40,8 +50,8 @@ export class RateController {
         widthCm: parseFloat(String(widthCm)),
         heightCm: parseFloat(String(heightCm)),
         actualWeightKg: parseFloat(String(actualWeightKg)),
-        orderType: orderType as string,
-        paymentType: paymentType as string,
+        orderType: (orderType as string) as 'B2C' | 'B2B',
+        paymentType: (paymentType as string) as 'PREPAID' | 'COD',
         declaredValue: declaredValue !== undefined ? parseFloat(String(declaredValue)) : undefined,
       });
 
