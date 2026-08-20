@@ -8,9 +8,8 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'https://last-mile-delivery-management-platform-2.onrender.com',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        secure: false,
       },
     },
   },
