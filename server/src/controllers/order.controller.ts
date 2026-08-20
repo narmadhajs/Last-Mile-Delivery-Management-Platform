@@ -14,7 +14,7 @@ export class OrderController {
       const user = req.user;
       if (!user) throw new AppError('Unauthorized', 401);
 
-      const customerId = user.role === 'ADMIN' && req.body.customerId ? req.body.customerId : user.id;
+      const customerId = user.role === 'ADMIN' && req.body.customerId ? (req.body.customerId as string) : user.id;
 
       const result = await OrderService.createOrder(
         {
@@ -42,7 +42,7 @@ export class OrderController {
       const { status, zoneId, agentId, orderType, paymentType, search, limit, page } = req.query;
 
       let customerIdFilter: string | undefined = undefined;
-      let agentIdFilter: string | undefined = agentId as string;
+      let agentIdFilter: string | undefined = agentId ? (agentId as string) : undefined;
 
       // Restrict customers to only their orders
       if (user?.role === 'CUSTOMER') {
@@ -54,11 +54,11 @@ export class OrderController {
       const result = await OrderService.getOrders({
         customerId: customerIdFilter,
         agentId: agentIdFilter,
-        status: status as OrderStatus,
-        zoneId: zoneId as string,
-        orderType: orderType as OrderType,
-        paymentType: paymentType as PaymentType,
-        search: search as string,
+        status: status ? ((status as string) as OrderStatus) : undefined,
+        zoneId: zoneId ? (zoneId as string) : undefined,
+        orderType: orderType ? ((orderType as string) as OrderType) : undefined,
+        paymentType: paymentType ? ((paymentType as string) as PaymentType) : undefined,
+        search: search ? (search as string) : undefined,
         limit: limit ? parseInt(limit as string, 10) : 50,
         page: page ? parseInt(page as string, 10) : 1,
       });
@@ -77,7 +77,7 @@ export class OrderController {
    */
   public static async getOrderById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const order = await OrderService.getOrderByTrackingOrId(id);
       res.json({
         success: true,
@@ -94,23 +94,23 @@ export class OrderController {
   public static async updateStatus(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const user = req.user;
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { status, remarks, failureReason, proofSignature, proofPhotoUrl, proofOtp, lat, lng, locationText } = req.body;
 
       const updatedOrder = await OrderService.updateOrderStatus({
         orderId: id,
-        status: status as OrderStatus,
+        status: (status as string) as OrderStatus,
         actorId: user?.id,
         actorRole: user?.role || 'AGENT',
         actorName: user?.name || 'Delivery Partner',
-        remarks,
-        failureReason,
-        proofSignature,
-        proofPhotoUrl,
-        proofOtp,
-        lat: lat ? parseFloat(lat) : undefined,
-        lng: lng ? parseFloat(lng) : undefined,
-        locationText,
+        remarks: remarks ? (remarks as string) : undefined,
+        failureReason: failureReason ? (failureReason as string) : undefined,
+        proofSignature: proofSignature ? (proofSignature as string) : undefined,
+        proofPhotoUrl: proofPhotoUrl ? (proofPhotoUrl as string) : undefined,
+        proofOtp: proofOtp ? (proofOtp as string) : undefined,
+        lat: lat !== undefined ? parseFloat(String(lat)) : undefined,
+        lng: lng !== undefined ? parseFloat(String(lng)) : undefined,
+        locationText: locationText ? (locationText as string) : undefined,
       });
 
       res.json({
@@ -128,13 +128,13 @@ export class OrderController {
   public static async adminOverrideStatus(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const user = req.user;
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { status, remarks } = req.body;
 
       const updatedOrder = await OrderService.updateOrderStatus(
         {
           orderId: id,
-          status: status as OrderStatus,
+          status: (status as string) as OrderStatus,
           actorId: user?.id,
           actorRole: 'ADMIN',
           actorName: user?.name || 'Administrator',
@@ -157,7 +157,7 @@ export class OrderController {
    */
   public static async getCandidates(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const candidates = await AssignmentService.evaluateCandidatesForOrder(id);
       res.json({
         success: true,
@@ -174,7 +174,7 @@ export class OrderController {
   public static async autoAssign(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const user = req.user;
-      const { id } = req.params;
+      const id = req.params.id as string;
 
       const result = await AssignmentService.autoAssignOrder(
         id,
@@ -198,7 +198,7 @@ export class OrderController {
   public static async manualAssign(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const user = req.user;
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { agentId } = req.body;
 
       if (!agentId) {
@@ -207,7 +207,7 @@ export class OrderController {
 
       const result = await AssignmentService.manualAssignOrder(
         id,
-        agentId,
+        agentId as string,
         user?.id || 'admin',
         user?.name || 'Administrator'
       );
@@ -227,7 +227,7 @@ export class OrderController {
   public static async reschedule(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const user = req.user;
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { rescheduledDate, timeSlot, remarks } = req.body;
 
       if (!rescheduledDate || !timeSlot) {
@@ -236,9 +236,9 @@ export class OrderController {
 
       const result = await OrderService.rescheduleDelivery({
         orderId: id,
-        rescheduledDate,
-        timeSlot,
-        remarks,
+        rescheduledDate: rescheduledDate as string,
+        timeSlot: timeSlot as string,
+        remarks: remarks ? (remarks as string) : undefined,
         actorId: user?.id,
         actorName: user?.name,
       });
