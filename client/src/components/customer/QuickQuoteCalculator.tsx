@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { rateApi, zoneApi } from '../../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { rateApi } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { Calculator, Sparkles, ArrowRight, ShieldCheck, Scale, Box, MapPin, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Scale, Box, MapPin } from 'lucide-react';
 
 interface QuickQuoteCalculatorProps {
   onSelectBookWithQuote?: (quoteData: any) => void;
@@ -22,37 +22,54 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
   const [loading, setLoading] = useState(false);
   const [quoteResult, setQuoteResult] = useState<any>(null);
 
-  const calculateEstimate = async () => {
+  const calculateEstimate = useCallback(async () => {
+    // Validate pincodes before making the API call to prevent invalid request errors
+    if (!pickupPincode || pickupPincode.trim().length < 6 || !dropPincode || dropPincode.trim().length < 6) {
+      return;
+    }
+
     setLoading(true);
     try {
       const res: any = await rateApi.calculateQuote({
-        pickupPincode,
-        dropPincode,
-        lengthCm,
-        widthCm,
-        heightCm,
-        actualWeightKg,
+        pickupPincode: pickupPincode.trim(),
+        dropPincode: dropPincode.trim(),
+        lengthCm: Number(lengthCm) || 0,
+        widthCm: Number(widthCm) || 0,
+        heightCm: Number(heightCm) || 0,
+        actualWeightKg: Number(actualWeightKg) || 0,
         orderType,
         paymentType,
       });
 
-      if (res.success && res.data) {
+      if (res?.success && res?.data) {
         setQuoteResult(res.data);
+      } else {
+        throw new Error(res?.message || 'Invalid calculation response format');
       }
     } catch (err: any) {
+      console.error('Quote calculation error details:', err);
+
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to compute delivery rate';
+
       showToast({
         type: 'error',
         title: 'Quote Calculation Error',
-        message: err.message || 'Failed to compute delivery rate',
+        message: errorMessage,
       });
+      setQuoteResult(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [pickupPincode, dropPincode, lengthCm, widthCm, heightCm, actualWeightKg, orderType, paymentType, showToast]);
 
   useEffect(() => {
-    calculateEstimate();
-  }, [pickupPincode, dropPincode, lengthCm, widthCm, heightCm, actualWeightKg, orderType, paymentType]);
+    // Debounce API requests slightly to prevent spamming the backend while dragging sliders
+    const handler = setTimeout(() => {
+      calculateEstimate();
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [calculateEstimate]);
 
   const presetExamples = [
     { label: 'Smartphone / Gadget (B2C)', L: 20, W: 12, H: 6, weight: 0.6, type: 'B2C', pay: 'PREPAID' },
@@ -63,7 +80,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
 
   return (
     <div className="p-1 space-y-6">
-      
+
       {/* Preset Quick Chips */}
       <div>
         <label className="text-xs font-semibold text-slate-400 block mb-2">⚡ Quick Sample Packages:</label>
@@ -71,6 +88,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
           {presetExamples.map((preset, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => {
                 setLengthCm(preset.L);
                 setWidthCm(preset.W);
@@ -89,10 +107,10 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
+
         {/* Left Inputs */}
         <div className="space-y-4">
-          
+
           {/* Order Type & Payment Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -101,22 +119,20 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
                 <button
                   type="button"
                   onClick={() => setOrderType('B2C')}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition ${
-                    orderType === 'B2C'
+                  className={`py-1.5 text-xs font-bold rounded-lg transition ${orderType === 'B2C'
                       ? 'bg-brand-500 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   B2C Retail
                 </button>
                 <button
                   type="button"
                   onClick={() => setOrderType('B2B')}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition ${
-                    orderType === 'B2B'
+                  className={`py-1.5 text-xs font-bold rounded-lg transition ${orderType === 'B2B'
                       ? 'bg-brand-500 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   B2B Freight
                 </button>
@@ -129,22 +145,20 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
                 <button
                   type="button"
                   onClick={() => setPaymentType('PREPAID')}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition ${
-                    paymentType === 'PREPAID'
+                  className={`py-1.5 text-xs font-bold rounded-lg transition ${paymentType === 'PREPAID'
                       ? 'bg-emerald-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   Prepaid
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentType('COD')}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition ${
-                    paymentType === 'COD'
+                  className={`py-1.5 text-xs font-bold rounded-lg transition ${paymentType === 'COD'
                       ? 'bg-amber-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   COD
                 </button>
@@ -165,6 +179,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
                 onChange={(e) => setPickupPincode(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl glass-input text-xs font-mono"
                 placeholder="e.g. 400021"
+                maxLength={6}
               />
             </div>
             <div>
@@ -178,6 +193,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
                 onChange={(e) => setDropPincode(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl glass-input text-xs font-mono"
                 placeholder="e.g. 400013"
+                maxLength={6}
               />
             </div>
           </div>
@@ -202,7 +218,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
                   min="5"
                   max="120"
                   value={lengthCm}
-                  onChange={(e) => setLengthCm(parseInt(e.target.value))}
+                  onChange={(e) => setLengthCm(parseInt(e.target.value, 10) || 5)}
                   className="w-full accent-brand-500"
                 />
               </div>
@@ -213,7 +229,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
                   min="5"
                   max="120"
                   value={widthCm}
-                  onChange={(e) => setWidthCm(parseInt(e.target.value))}
+                  onChange={(e) => setWidthCm(parseInt(e.target.value, 10) || 5)}
                   className="w-full accent-brand-500"
                 />
               </div>
@@ -224,7 +240,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
                   min="5"
                   max="120"
                   value={heightCm}
-                  onChange={(e) => setHeightCm(parseInt(e.target.value))}
+                  onChange={(e) => setHeightCm(parseInt(e.target.value, 10) || 5)}
                   className="w-full accent-brand-500"
                 />
               </div>
@@ -246,7 +262,7 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
               max="50"
               step="0.1"
               value={actualWeightKg}
-              onChange={(e) => setActualWeightKg(parseFloat(e.target.value))}
+              onChange={(e) => setActualWeightKg(parseFloat(e.target.value) || 0.1)}
               className="w-full accent-emerald-500"
             />
           </div>
@@ -255,62 +271,61 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
 
         {/* Right Live Calculation Output */}
         <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800/90 flex flex-col justify-between shadow-xl">
-          {loading && !quoteResult ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">
+          {loading ? (
+            <div className="h-full min-h-[300px] flex items-center justify-center text-xs text-slate-400">
               Calculating dynamic rate...
             </div>
           ) : quoteResult ? (
             <div className="space-y-4">
-              
+
               {/* Grand Total Header */}
               <div className="p-4 rounded-xl bg-gradient-to-br from-brand-950/80 via-slate-900 to-slate-900 border border-brand-500/30 text-center">
                 <span className="text-[11px] uppercase font-bold tracking-wider text-brand-300">
                   Estimated Delivery Charge
                 </span>
                 <div className="text-3xl font-extrabold text-white mt-1">
-                  ₹{quoteResult.totalAmount.toFixed(2)}
+                  ₹{Number(quoteResult.totalAmount || 0).toFixed(2)}
                 </div>
                 <div className="mt-2 flex items-center justify-center gap-2">
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      quoteResult.isIntraZone
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${quoteResult.isIntraZone
                         ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
                         : 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/30'
-                    }`}
+                      }`}
                   >
                     {quoteResult.isIntraZone ? 'Intra-Zone Delivery' : 'Inter-Zone Delivery'}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                    {quoteResult.rateCard.name}
-                  </span>
+                  {quoteResult.rateCard?.name && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                      {quoteResult.rateCard.name}
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Weight Comparison Card */}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div
-                  className={`p-3 rounded-xl border ${
-                    quoteResult.billedOn === 'ACTUAL_WEIGHT'
+                  className={`p-3 rounded-xl border ${quoteResult.billedOn === 'ACTUAL_WEIGHT'
                       ? 'bg-brand-950/40 border-brand-500/40 text-brand-200'
                       : 'bg-slate-900 border-slate-800 text-slate-400'
-                  }`}
+                    }`}
                 >
                   <span className="text-[10px] block opacity-80">Actual Weight</span>
-                  <span className="font-mono font-bold text-sm">{quoteResult.actualWeightKg} kg</span>
+                  <span className="font-mono font-bold text-sm">{quoteResult.actualWeightKg ?? 0} kg</span>
                   {quoteResult.billedOn === 'ACTUAL_WEIGHT' && (
                     <span className="text-[9px] block text-brand-300 font-semibold mt-0.5">★ Billed Weight</span>
                   )}
                 </div>
 
                 <div
-                  className={`p-3 rounded-xl border ${
-                    quoteResult.billedOn === 'VOLUMETRIC_WEIGHT'
+                  className={`p-3 rounded-xl border ${quoteResult.billedOn === 'VOLUMETRIC_WEIGHT'
                       ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
                       : 'bg-slate-900 border-slate-800 text-slate-400'
-                  }`}
+                    }`}
                 >
                   <span className="text-[10px] block opacity-80">Volumetric (L×B×H÷5000)</span>
-                  <span className="font-mono font-bold text-sm">{quoteResult.volumetricWeightKg} kg</span>
+                  <span className="font-mono font-bold text-sm">{quoteResult.volumetricWeightKg ?? 0} kg</span>
                   {quoteResult.billedOn === 'VOLUMETRIC_WEIGHT' && (
                     <span className="text-[9px] block text-amber-300 font-semibold mt-0.5">★ Billed Weight</span>
                   )}
@@ -320,31 +335,31 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
               {/* Itemized Cost Breakdown */}
               <div className="space-y-1.5 text-xs bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
                 <div className="flex justify-between text-slate-300">
-                  <span>Base Fare (up to {quoteResult.rateCard.baseWeightKg} kg)</span>
-                  <span className="font-mono">₹{quoteResult.baseCharge.toFixed(2)}</span>
+                  <span>Base Fare (up to {quoteResult.rateCard?.baseWeightKg ?? 0} kg)</span>
+                  <span className="font-mono">₹{Number(quoteResult.baseCharge || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-300">
                   <span>
-                    Excess Weight ({quoteResult.excessWeightKg} kg • {quoteResult.incrementalSlabs} slab(s))
+                    Excess Weight ({quoteResult.excessWeightKg ?? 0} kg • {quoteResult.incrementalSlabs ?? 0} slab(s))
                   </span>
-                  <span className="font-mono">₹{quoteResult.incrementalCharge.toFixed(2)}</span>
+                  <span className="font-mono">₹{Number(quoteResult.incrementalCharge || 0).toFixed(2)}</span>
                 </div>
                 {paymentType === 'COD' && (
                   <div className="flex justify-between text-amber-300 font-medium">
                     <span>COD Surcharge</span>
-                    <span className="font-mono">₹{quoteResult.codSurcharge.toFixed(2)}</span>
+                    <span className="font-mono">₹{Number(quoteResult.codSurcharge || 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="border-t border-slate-800 pt-2 mt-2 flex justify-between font-bold text-white text-sm">
                   <span>Total Amount</span>
-                  <span className="font-mono text-brand-300">₹{quoteResult.totalAmount.toFixed(2)}</span>
+                  <span className="font-mono text-brand-300">₹{Number(quoteResult.totalAmount || 0).toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Auto-detected Zones */}
               <div className="text-[11px] text-slate-400 bg-slate-900/40 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
-                <span>📍 From: <b className="text-slate-200">{quoteResult.pickupZone.name}</b></span>
-                <span>➔ To: <b className="text-slate-200">{quoteResult.dropZone.name}</b></span>
+                <span>📍 From: <b className="text-slate-200">{quoteResult.pickupZone?.name || 'Unknown'}</b></span>
+                <span>➔ To: <b className="text-slate-200">{quoteResult.dropZone?.name || 'Unknown'}</b></span>
               </div>
 
               {onSelectBookWithQuote && (
@@ -359,7 +374,11 @@ export const QuickQuoteCalculator: React.FC<QuickQuoteCalculatorProps> = ({ onSe
               )}
 
             </div>
-          ) : null}
+          ) : (
+            <div className="h-full min-h-[300px] flex items-center justify-center text-xs text-slate-500">
+              Enter valid 6-digit pincodes to compute a quote.
+            </div>
+          )}
         </div>
 
       </div>
