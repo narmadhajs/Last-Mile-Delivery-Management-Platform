@@ -1,0 +1,251 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  AGENT
+  CUSTOMER
+}
+
+enum AgentStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+enum OrderType {
+  B2C
+  B2B
+}
+
+enum PaymentType {
+  PREPAID
+  COD
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING_COLLECTION
+  COLLECTED
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RESCHEDULED
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String
+  name         String
+  phone        String?
+  role         Role      @default(CUSTOMER)
+  companyName  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  agentProfile DeliveryAgent?
+  placedOrders Order[]          @relation("CustomerOrders")
+  notifications Notification[]
+}
+
+model DeliveryAgent {
+  id                 String      @id @default(uuid())
+  userId             String      @unique
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleType        String      @default("MOTORCYCLE") // MOTORCYCLE, VAN, EV_SCOOTER, TRUCK
+  vehicleNumber      String      @default("MH-01-AB-1234")
+  status             AgentStatus @default(AVAILABLE)
+  currentLat         Float       @default(19.0760)
+  currentLng         Float       @default(72.8777)
+  lastLocationUpdate DateTime    @default(now())
+  homeZoneId         String?
+  homeZone           Zone?       @relation(fields: [homeZoneId], references: [id])
+  activeOrderCount   Int         @default(0)
+  maxCapacity        Int         @default(5)
+  rating             Float       @default(4.85)
+  totalDeliveries    Int         @default(0)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  assignedOrders     Order[]     @relation("AgentOrders")
+}
+
+model Zone {
+  id          String     @id @default(uuid())
+  code        String     @unique // e.g. "MUM-C", "BLR-N"
+  name        String
+  description String?
+  city        String
+  state       String
+  centerLat   Float
+  centerLng   Float
+  radiusKm    Float      @default(15.0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  areas        ZoneArea[]
+  pickupOrders Order[]        @relation("PickupZone")
+  dropOrders   Order[]        @relation("DropZone")
+  agents       DeliveryAgent[]
+}
+
+model ZoneArea {
+  id        String   @id @default(uuid())
+  zoneId    String
+  zone      Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  areaName  String
+  pincode   String
+  city      String
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+}
+
+model RateCard {
+  id                   String    @id @default(uuid())
+  code                 String    @unique // e.g. "RATE-B2C-STD", "RATE-B2B-EXP"
+  name                 String
+  orderType            OrderType // B2C or B2B
+  baseWeightKg         Float     @default(0.5)
+  baseRateIntra        Float     @default(40.0)
+  baseRateInter        Float     @default(70.0)
+  incrementalWeightKg  Float     @default(0.5)
+  incrementalRateIntra Float     @default(25.0)
+  incrementalRateInter Float     @default(45.0)
+  volumetricDivisor    Float     @default(5000.0)
+  codFlatFee           Float     @default(15.0)
+  codPercentage        Float     @default(1.5) // % of order value or subtotal
+  codMinFee            Float     @default(30.0)
+  isActive             Boolean   @default(true)
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model Order {
+  id                     String         @id @default(uuid())
+  trackingNumber         String         @unique // e.g. "TRK-2026-98721"
+  customerId             String
+  customer               User           @relation("CustomerOrders", fields: [customerId], references: [id])
+  agentId                String?
+  agent                  DeliveryAgent? @relation("AgentOrders", fields: [agentId], references: [id])
+  
+  orderType              OrderType      @default(B2C)
+  paymentType            PaymentType    @default(PREPAID)
+  paymentStatus          PaymentStatus  @default(PAID)
+  
+  // Pickup Details
+  pickupAddress          String
+  pickupPincode          String
+  pickupArea             String?
+  pickupCity             String
+  pickupLat              Float
+  pickupLng              Float
+  pickupContactName      String
+  pickupContactPhone     String
+  pickupZoneId           String?
+  pickupZone             Zone?          @relation("PickupZone", fields: [pickupZoneId], references: [id])
+  
+  // Drop Details
+  dropAddress            String
+  dropPincode            String
+  dropArea               String?
+  dropCity               String
+  dropLat                Float
+  dropLng                Float
+  dropContactName        String
+  dropContactPhone       String
+  dropZoneId             String?
+  dropZone               Zone?          @relation("DropZone", fields: [dropZoneId], references: [id])
+  
+  // Package & Weight
+  lengthCm               Float
+  widthCm                Float
+  heightCm               Float
+  actualWeightKg         Float
+  volumetricWeightKg     Float
+  chargeableWeightKg     Float
+  
+  // Rate Breakdown
+  isIntraZone            Boolean        @default(true)
+  baseRate               Float          @default(0.0)
+  incrementalRate        Float          @default(0.0)
+  baseCharge             Float          @default(0.0)
+  incrementalCharge      Float          @default(0.0)
+  codSurcharge           Float          @default(0.0)
+  totalAmount            Float          @default(0.0)
+  declaredPackageValue   Float?
+  packageCategory        String?        @default("Standard Parcel")
+  
+  // Status & Rescheduling
+  status                 OrderStatus    @default(CONFIRMED)
+  failureReason          String?
+  failureCount           Int            @default(0)
+  scheduledDeliveryDate  DateTime?
+  rescheduledDeliveryDate DateTime?
+  rescheduleTimeSlot     String?
+  rescheduleRemarks      String?
+  
+  // Proof of delivery
+  proofSignature         String?
+  proofPhotoUrl          String?
+  proofOtp               String?
+  specialInstructions    String?
+  
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  trackingHistory        TrackingHistory[]
+  notifications          Notification[]
+}
+
+model TrackingHistory {
+  id             String      @id @default(uuid())
+  orderId        String
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status         OrderStatus
+  previousStatus OrderStatus?
+  actorId        String?
+  actorRole      String      @default("SYSTEM") // ADMIN, AGENT, CUSTOMER, SYSTEM
+  actorName      String      @default("System Automator")
+  lat            Float?
+  lng            Float?
+  locationText   String?
+  remarks        String?
+  failureReason  String?
+  proofData      String?
+  timestamp      DateTime    @default(now())
+}
+
+model Notification {
+  id              String   @id @default(uuid())
+  orderId         String?
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  recipientUserId String?
+  recipientUser   User?    @relation(fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientEmail  String
+  recipientPhone  String?
+  channel         String   @default("EMAIL") // EMAIL, SMS, IN_APP
+  title           String
+  message         String
+  status          String   @default("SENT") // SENT, DELIVERED, FAILED
+  metadata        String?
+  createdAt       DateTime @default(now())
+}
