@@ -13,7 +13,7 @@ export class AgentController {
       const { status, zoneId } = req.query;
 
       const whereClause: any = {};
-      if (status) whereClause.status = status as AgentStatus;
+      if (status) whereClause.status = (status as string) as AgentStatus;
       if (zoneId) whereClause.homeZoneId = zoneId as string;
 
       const agents = await prisma.deliveryAgent.findMany({
@@ -43,7 +43,7 @@ export class AgentController {
    */
   public static async getAgentById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const agent = await prisma.deliveryAgent.findUnique({
         where: { id },
         include: {
@@ -79,7 +79,7 @@ export class AgentController {
 
       let agentId = user?.agentId;
       if (user?.role === 'ADMIN' && req.params.id) {
-        agentId = req.params.id;
+        agentId = req.params.id as string;
       }
 
       if (!agentId) {
@@ -90,12 +90,12 @@ export class AgentController {
         lastLocationUpdate: new Date(),
       };
 
-      if (status) updateData.status = status as AgentStatus;
-      if (currentLat !== undefined) updateData.currentLat = parseFloat(currentLat);
-      if (currentLng !== undefined) updateData.currentLng = parseFloat(currentLng);
-      if (vehicleType) updateData.vehicleType = vehicleType;
-      if (vehicleNumber) updateData.vehicleNumber = vehicleNumber;
-      if (homeZoneId !== undefined) updateData.homeZoneId = homeZoneId;
+      if (status) updateData.status = (status as string) as AgentStatus;
+      if (currentLat !== undefined) updateData.currentLat = parseFloat(String(currentLat));
+      if (currentLng !== undefined) updateData.currentLng = parseFloat(String(currentLng));
+      if (vehicleType) updateData.vehicleType = vehicleType as string;
+      if (vehicleNumber) updateData.vehicleNumber = vehicleNumber as string;
+      if (homeZoneId !== undefined) updateData.homeZoneId = homeZoneId ? (homeZoneId as string) : null;
 
       const agent = await prisma.deliveryAgent.update({
         where: { id: agentId },
