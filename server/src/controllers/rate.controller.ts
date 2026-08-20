@@ -28,21 +28,21 @@ export class RateController {
       } = req.body;
 
       const quote = await RateEngineService.calculateRate({
-        pickupPincode,
-        pickupArea,
-        pickupLat: pickupLat ? parseFloat(pickupLat) : undefined,
-        pickupLng: pickupLng ? parseFloat(pickupLng) : undefined,
-        dropPincode,
-        dropArea,
-        dropLat: dropLat ? parseFloat(dropLat) : undefined,
-        dropLng: dropLng ? parseFloat(dropLng) : undefined,
-        lengthCm: parseFloat(lengthCm),
-        widthCm: parseFloat(widthCm),
-        heightCm: parseFloat(heightCm),
-        actualWeightKg: parseFloat(actualWeightKg),
-        orderType,
-        paymentType,
-        declaredValue: declaredValue ? parseFloat(declaredValue) : undefined,
+        pickupPincode: pickupPincode ? String(pickupPincode) : undefined,
+        pickupArea: pickupArea ? String(pickupArea) : undefined,
+        pickupLat: pickupLat !== undefined ? parseFloat(String(pickupLat)) : undefined,
+        pickupLng: pickupLng !== undefined ? parseFloat(String(pickupLng)) : undefined,
+        dropPincode: dropPincode ? String(dropPincode) : undefined,
+        dropArea: dropArea ? String(dropArea) : undefined,
+        dropLat: dropLat !== undefined ? parseFloat(String(dropLat)) : undefined,
+        dropLng: dropLng !== undefined ? parseFloat(String(dropLng)) : undefined,
+        lengthCm: parseFloat(String(lengthCm)),
+        widthCm: parseFloat(String(widthCm)),
+        heightCm: parseFloat(String(heightCm)),
+        actualWeightKg: parseFloat(String(actualWeightKg)),
+        orderType: orderType as string,
+        paymentType: paymentType as string,
+        declaredValue: declaredValue !== undefined ? parseFloat(String(declaredValue)) : undefined,
       });
 
       res.json({
@@ -80,21 +80,21 @@ export class RateController {
       const data = req.body;
       const rateCard = await prisma.rateCard.create({
         data: {
-          code: data.code.toUpperCase(),
-          name: data.name,
+          code: String(data.code).toUpperCase(),
+          name: String(data.name),
           orderType: data.orderType,
-          baseWeightKg: parseFloat(data.baseWeightKg),
-          baseRateIntra: parseFloat(data.baseRateIntra),
-          baseRateInter: parseFloat(data.baseRateInter),
-          incrementalWeightKg: parseFloat(data.incrementalWeightKg),
-          incrementalRateIntra: parseFloat(data.incrementalRateIntra),
-          incrementalRateInter: parseFloat(data.incrementalRateInter),
-          volumetricDivisor: parseFloat(data.volumetricDivisor || '5000'),
-          codFlatFee: parseFloat(data.codFlatFee || '0'),
-          codPercentage: parseFloat(data.codPercentage || '0'),
-          codMinFee: parseFloat(data.codMinFee || '0'),
+          baseWeightKg: parseFloat(String(data.baseWeightKg)),
+          baseRateIntra: parseFloat(String(data.baseRateIntra)),
+          baseRateInter: parseFloat(String(data.baseRateInter)),
+          incrementalWeightKg: parseFloat(String(data.incrementalWeightKg)),
+          incrementalRateIntra: parseFloat(String(data.incrementalRateIntra)),
+          incrementalRateInter: parseFloat(String(data.incrementalRateInter)),
+          volumetricDivisor: parseFloat(String(data.volumetricDivisor || '5000')),
+          codFlatFee: parseFloat(String(data.codFlatFee || '0')),
+          codPercentage: parseFloat(String(data.codPercentage || '0')),
+          codMinFee: parseFloat(String(data.codMinFee || '0')),
           isActive: data.isActive ?? true,
-          notes: data.notes,
+          notes: data.notes ? String(data.notes) : undefined,
         },
       });
 
@@ -112,24 +112,24 @@ export class RateController {
    */
   public static async updateRateCard(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const data = req.body;
 
       const updateData: any = {};
-      if (data.name !== undefined) updateData.name = data.name;
+      if (data.name !== undefined) updateData.name = String(data.name);
       if (data.orderType !== undefined) updateData.orderType = data.orderType;
-      if (data.baseWeightKg !== undefined) updateData.baseWeightKg = parseFloat(data.baseWeightKg);
-      if (data.baseRateIntra !== undefined) updateData.baseRateIntra = parseFloat(data.baseRateIntra);
-      if (data.baseRateInter !== undefined) updateData.baseRateInter = parseFloat(data.baseRateInter);
-      if (data.incrementalWeightKg !== undefined) updateData.incrementalWeightKg = parseFloat(data.incrementalWeightKg);
-      if (data.incrementalRateIntra !== undefined) updateData.incrementalRateIntra = parseFloat(data.incrementalRateIntra);
-      if (data.incrementalRateInter !== undefined) updateData.incrementalRateInter = parseFloat(data.incrementalRateInter);
-      if (data.volumetricDivisor !== undefined) updateData.volumetricDivisor = parseFloat(data.volumetricDivisor);
-      if (data.codFlatFee !== undefined) updateData.codFlatFee = parseFloat(data.codFlatFee);
-      if (data.codPercentage !== undefined) updateData.codPercentage = parseFloat(data.codPercentage);
-      if (data.codMinFee !== undefined) updateData.codMinFee = parseFloat(data.codMinFee);
+      if (data.baseWeightKg !== undefined) updateData.baseWeightKg = parseFloat(String(data.baseWeightKg));
+      if (data.baseRateIntra !== undefined) updateData.baseRateIntra = parseFloat(String(data.baseRateIntra));
+      if (data.baseRateInter !== undefined) updateData.baseRateInter = parseFloat(String(data.baseRateInter));
+      if (data.incrementalWeightKg !== undefined) updateData.incrementalWeightKg = parseFloat(String(data.incrementalWeightKg));
+      if (data.incrementalRateIntra !== undefined) updateData.incrementalRateIntra = parseFloat(String(data.incrementalRateIntra));
+      if (data.incrementalRateInter !== undefined) updateData.incrementalRateInter = parseFloat(String(data.incrementalRateInter));
+      if (data.volumetricDivisor !== undefined) updateData.volumetricDivisor = parseFloat(String(data.volumetricDivisor));
+      if (data.codFlatFee !== undefined) updateData.codFlatFee = parseFloat(String(data.codFlatFee));
+      if (data.codPercentage !== undefined) updateData.codPercentage = parseFloat(String(data.codPercentage));
+      if (data.codMinFee !== undefined) updateData.codMinFee = parseFloat(String(data.codMinFee));
       if (data.isActive !== undefined) updateData.isActive = data.isActive;
-      if (data.notes !== undefined) updateData.notes = data.notes;
+      if (data.notes !== undefined) updateData.notes = String(data.notes);
 
       const rateCard = await prisma.rateCard.update({
         where: { id },
@@ -150,7 +150,7 @@ export class RateController {
    */
   public static async deleteRateCard(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       await prisma.rateCard.delete({ where: { id } });
       res.json({ success: true, message: 'Rate card deleted' });
     } catch (err) {
