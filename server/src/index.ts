@@ -34,7 +34,11 @@ io.on('connection', (socket) => {
 
 // Middleware
 app.use(cors({
-  origin: [config.clientUrl, 'http://localhost:5173'],
+  origin: [
+    config.clientUrl,
+    'http://localhost:5173',
+    'https://last-mile-delivery-management-platf.vercel.app',
+  ],
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));

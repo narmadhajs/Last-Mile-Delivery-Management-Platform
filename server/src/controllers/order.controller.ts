@@ -100,7 +100,7 @@ export class OrderController {
       const updatedOrder = await OrderService.updateOrderStatus({
         orderId: id,
         status: (status as string) as OrderStatus,
-        actorId: user?.id,
+        actorId: user?.id as string,
         actorRole: user?.role || 'AGENT',
         actorName: user?.name || 'Delivery Partner',
         remarks: remarks ? (remarks as string) : undefined,
@@ -135,7 +135,7 @@ export class OrderController {
         {
           orderId: id,
           status: (status as string) as OrderStatus,
-          actorId: user?.id,
+          actorId: user?.id as string,
           actorRole: 'ADMIN',
           actorName: user?.name || 'Administrator',
           remarks: `Admin Override: ${remarks || 'Manual state modification'}`,
@@ -178,7 +178,7 @@ export class OrderController {
 
       const result = await AssignmentService.autoAssignOrder(
         id,
-        user?.id,
+        user?.id as string,
         user?.role || 'ADMIN',
         user?.name || 'Administrator'
       );
@@ -239,7 +239,7 @@ export class OrderController {
         rescheduledDate: rescheduledDate as string,
         timeSlot: timeSlot as string,
         remarks: remarks ? (remarks as string) : undefined,
-        actorId: user?.id,
+        actorId: user?.id as string,
         actorName: user?.name,
       });
 
